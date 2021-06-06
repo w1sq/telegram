@@ -1,54 +1,67 @@
-from math import e
-import constants as keys
-from telegram.ext import *
+import telebot
+from constants import API_KEY,months
 import responses as resp
+import schedule
+import threading
+import time
+import requests
+from datetime import datetime
 
+bot = telebot.TeleBot(API_KEY)
 print('Bot started')
 
-def start_command(update,context):
-    update.message.reply_text('Напиши что-нибудь для начала')
+@bot.message_handler(commands = ['start'])
+def start_command(message):
+    bot.send_message(message.chat.id,'Привет, это бот для рассылки магазина фортнайт в телеграмм \n'
+                                     'Ежедневно в 3 ночи присылает обновления магазина \n'
+                                     '/info - для информации по всем командамrf')
 
 
-def help_command(update,context):
-    update.message.reply_text('Гугл в помощь')
-
-
-def send_image(update,context):
-    update.message.send_photo('https://seebot.dev/images/archive/missions/1_Jun_2021.png')
-
-
-def handle_massage(update,context):
-    user_msg = str(update.message.text).lower()
-    response = resp.sample_responses(user_msg)
-
-    update.message.reply_text(response)
-
-
-def error(update,context):
-    print(f"Обновление {update} вызвало ошибку {context.error}")
-
-
-
-def get_user_id(update,context):
-    with open('user.txt','w') as userstxt:
+@bot.message_handler(commands=['subscribe'])
+def get_user_id(message):
+    print(f'Подписка юзера {str(message.chat.id)}')
+    with open('user.txt','r') as userstxt:
         users = userstxt.readlines()
-        user_id = update.message.chat.id
+        user_id = str(message.chat.id)
         if user_id not in users:
-            userstxt.write(user_id)
+            with open('user.txt','a') as file:
+                file.write(user_id)
+            bot.send_message(message.chat.id,'Вы успешно подписались :)')
+        else:
+            bot.send_message(message.chat.id,'Вы уже подписаны на рассылку')
 
 
-def main():
-    updater = Updater(keys.API_KEY, use_context=True)
-    dp = updater.dispatcher
+def photo_sender(bot):
+    print(f'Начинаем цикл {datetime.now().strftime("%m/%d/%Y, %H:%M:%S")}')
+    shop() #скачивает картинки
+    time.sleep(10)
+    with open('user.txt','r') as userstxt:
+        users = userstxt.readlines()
+    for user_id in users:
+        for filename in ['pics\missions1.png','pics\missions2.png','pics\shop.png']:
+            with open(filename,'rb') as file:
+                bot.send_photo(user_id, file)
 
-    dp.add_handler(CommandHandler("start",start_command))
-    dp.add_handler(CommandHandler("help",help_command))
-    dp.add_handler(CommandHandler("image",send_image))
-    
-    dp.add_handler(MessageHandler(Filters.text,handle_massage))
+schedule.every().day.at('03:10').do(lambda: photo_sender(bot))
+def schedule_cycle():
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
 
-    dp.add_error_handler(error)
 
-    updater.start_polling()
-
-main()
+def shop():
+    url1 = f'https://seebot.dev/images/archive/missions/{datetime.now().day}_{months[str(datetime.now().month)]}_{datetime.now().year}.png'
+    url2 = f'https://seebot.dev/images/archive/missions/{datetime.now().day}_{months[str(datetime.now().month)]}_{datetime.now().year}_1.png'
+    url3 = f'https://seebot.dev/images/archive/brshop/{datetime.now().day}_{months[str(datetime.now().month)]}_{datetime.now().year}.png'
+    query = requests.get(url1)
+    with open('pics/missions1.png', 'wb') as file:
+        file.write(query.content)
+    query = requests.get(url2)
+    with open('pics/missions2.png', 'wb') as file:
+        file.write(query.content)
+    query = requests.get(url3)
+    with open('pics/shop.png','wb') as file:
+        file.write(query.content)
+daemon = threading.Thread(target=schedule_cycle, daemon=True)
+daemon.start()
+bot.polling()
