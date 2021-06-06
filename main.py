@@ -21,11 +21,11 @@ def start_command(message):
 def get_user_id(message):
     print(f'Подписка юзера {str(message.chat.id)}')
     with open('user.txt','r') as userstxt:
-        users = userstxt.readlines()
+        users = userstxt.read().split()
         user_id = str(message.chat.id)
         if user_id not in users:
             with open('user.txt','a') as file:
-                file.write(user_id)
+                file.write(user_id+'\n')
             bot.send_message(message.chat.id,'Вы успешно подписались :)')
         else:
             bot.send_message(message.chat.id,'Вы уже подписаны на рассылку')
@@ -36,7 +36,7 @@ def photo_sender(bot):
     shop() #скачивает картинки
     time.sleep(10)
     with open('user.txt','r') as userstxt:
-        users = userstxt.readlines()
+        users = userstxt.read().split()
     for user_id in users:
         for filename in ['pics\missions1.png','pics\missions2.png','pics\shop.png']:
             with open(filename,'rb') as file:
