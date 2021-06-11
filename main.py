@@ -69,8 +69,21 @@ def unsubscribe(message):
         bot.send_message(message.chat.id,'Вы еще не подписаны на рассылку')
 
 
+@bot.message_handler(commands=['change_pve'])
+def change_pve(message):
+    pve = cur.execute('''
+    SELECT pve FROM info
+    WHERE id == ?
+    ''',(message.chat.id,)).fetchall()[0][0]
+    if pve==1:
+        bot.send_message(message.chat.id,'Сейчас каждый день вы получаете алерты')
+    else:
+        bot.send_message(message.chat.id,'Сейчас каждый день вы получаете только магазин')
+
+
+
 @bot.message_handler(commands=['get_day'])
-def info(message):
+def get_day(message):
     pve = cur.execute('''
     SELECT pve FROM info
     WHERE id == ?
@@ -89,8 +102,10 @@ def get_today(message):
     ''',(message.chat.id,)).fetchall()[0][0]
     with open('pics\missions1.png','rb') as pve1, open('pics\missions2.png','rb') as pve2, open('pics\shop.png','rb') as shop:
         if pve == 1:
+            bot.send_message(message.chat.id,'Сегодняшний магазин + алерты')
             bot.send_media_group(message.chat.id,[telebot.types.InputMediaPhoto(pve1),telebot.types.InputMediaPhoto(pve2),telebot.types.InputMediaPhoto(shop)])
         else:
+            bot.send_message(message.chat.id,'Сегодняшний магазин')
             bot.send_photo(message.chat.id,shop)
 
 def photo_sender(bot):
@@ -103,11 +118,20 @@ def photo_sender(bot):
         user_id = user[0]
         pve = user[1]
         with open('pics\missions1.png','rb') as pve1, open('pics\missions2.png','rb') as pve2, open('pics\shop.png','rb') as shop:
-            if pve == 1:
-                bot.send_media_group(user_id,[telebot.types.InputMediaPhoto(pve1),telebot.types.InputMediaPhoto(pve2),telebot.types.InputMediaPhoto(shop)])
-            else:
-                bot.send_photo(user_id,shop)
-                
+            try:
+                if pve == 1:
+                    bot.send_message(user_id,f'Магазин + алерты на {datetime.now().strftime("%d/%m/%Y")}')
+                    bot.send_media_group(user_id,[telebot.types.InputMediaPhoto(pve1),telebot.types.InputMediaPhoto(pve2),telebot.types.InputMediaPhoto(shop)])
+                else:
+                    bot.send_message(user_id,f'Магазин на {datetime.now().strftime("%d/%m/%Y")}')
+                    bot.send_photo(user_id,shop)
+            except Exception:
+                print(f'Удаление юзера {user_id}, причина - блокировка бота')
+                cur.execute('''
+                    DELETE from info
+                    where id == ?
+                    ''',(user_id,))
+                con.commit()
 
 
 schedule.every().day.at('03:10').do(lambda: photo_sender(bot))
