@@ -1,6 +1,6 @@
 import telebot
 from telebot.types import Message
-from constants import API_KEY,months
+from constants import API_KEY
 import schedule
 import threading
 import time
@@ -13,6 +13,7 @@ from io import StringIO
 bot = telebot.TeleBot(API_KEY)
 con = sqlite3.connect("users.db",check_same_thread=False)
 cur = con.cursor()
+months = {'1':'Jan','2':'Feb','3':'Mar','4':'Apr','5':'May','6':'Jun','7':'Jul','8':'Aug','9':'Sep','10':'Oct','11':'Nov','12':'Dec'}
 print('Bot started')
 
 @bot.message_handler(commands = ['start'])
